@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estudio Juntos</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1d1d1b;--mu:#6b6a64;--bd:#e3e1d9;--ac:#2f6f5e;--act:#fff;--soft:#e6f0ec}
+@media (prefers-color-scheme:dark){:root{--bg:#161715;--card:#202220;--tx:#eeede8;--mu:#9a998f;--bd:#33352f;--ac:#6fc2a9;--act:#10201b;--soft:#23322d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}
+.mu{color:var(--mu);font-size:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
+input,textarea{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit}
+button{background:var(--ac);color:var(--act);border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}
+button.g{background:var(--soft);color:var(--ac)}
+button.x{background:none;color:var(--mu);padding:2px 8px;font-weight:400}
+.row{display:flex;gap:8px;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1.1fr;gap:16px;margin-top:16px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.code{background:var(--soft);color:var(--ac);padding:2px 10px;border-radius:99px;font-weight:700;letter-spacing:1px}
+.item{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.item:last-child{border:0}
+.item a{color:var(--ac);font-weight:600;word-break:break-word}
+.note{white-space:pre-wrap;margin:4px 0 0;font-size:15px}
+#chat{height:340px;overflow-y:auto;margin:8px 0 10px}
+.m{display:flex;gap:10px;padding:2px 0}
+.m.first{margin-top:10px}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
+.m.cont .av{visibility:hidden;height:0}
+.mb{min-width:0;word-break:break-word;white-space:pre-wrap}
+.mn{font-weight:700;margin-right:8px}.mt{font-size:12px;color:var(--mu)}
+.hide{display:none}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.timer{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+#vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.tile{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:4/3}
+.tile video{width:100%;height:100%;object-fit:cover}
+.tile span{position:absolute;left:8px;bottom:6px;color:#fff;font-size:13px;background:#0008;padding:1px 8px;border-radius:99px}
+.tile.me video{transform:scaleX(-1)}
+</style>
+</head>
+<body>
+<div id="err" class="hide" style="background:#b3261e;color:#fff;padding:8px 14px;font-size:14px;word-break:break-word"></div>
+<div class="wrap">
+
+<section id="home">
+  <h1>Estudio Juntos</h1>
+  <p class="mu">Crea una sala, comparte el código y estudien juntos. Sin cuentas, sin configurar nada.</p>
+  <div class="card" style="max-width:460px">
+    <label class="mu">Tu nombre</label>
+    <input id="name" placeholder="Ej: Camila" maxlength="24">
+    <div style="height:12px"></div>
+    <input id="rtitle" placeholder="Nombre de la sala (opcional)" maxlength="30">
+    <label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0 12px"><input type="checkbox" id="pub" style="width:auto" checked> Sala pública (aparece en la lista de salas activas)</label>
+    <button id="create" style="width:100%">Crear sala nueva</button>
+    <p class="mu" style="text-align:center;margin:12px 0">o únete con un código</p>
+    <div class="row"><input id="codeIn" placeholder="Código de sala" maxlength="12" style="text-transform:uppercase"><button class="g" id="join">Entrar</button></div>
+  </div>
+  <div class="card" style="max-width:460px;margin-top:16px"><h2>Salas activas</h2><div id="rooms" class="mu">Buscando salas…</div></div>
+  <div id="slot-home" style="max-width:720px;margin-top:16px">
+<div class="card" id="matcard">
+      <h2>Biblioteca de estudio (global)</h2>
+      <div id="lock" class="row" style="margin-bottom:10px">
+        <input id="pw" type="password" placeholder="Contraseña para subir o borrar material">
+        <button class="g" id="unlock">Desbloquear</button>
+      </div>
+      <p class="mu" id="pwmsg"></p>
+      <div id="tools" class="hide">
+        <div class="tabs">
+          <button class="g" data-t="file">Subir archivo</button>
+          <button class="g" data-t="link">Enlace</button>
+          <button class="g" data-t="note">Nota</button>
+        </div>
+        <div id="p-file" class="hide"><input type="file" id="file"><p class="mu" id="fstat">Archivos hasta 150 KB. Para algo más grande, sube a Drive y pega el enlace.</p></div>
+        <div id="p-link" class="hide"><input id="ltitle" placeholder="Título" style="margin-bottom:8px"><div class="row"><input id="lurl" placeholder="https://…"><button id="ladd">Añadir</button></div></div>
+        <div id="p-note" class="hide"><input id="ntitle" placeholder="Título" style="margin-bottom:8px"><textarea id="nbody" rows="3" placeholder="Resumen, fórmulas, preguntas…"></textarea><button id="nadd" style="margin-top:8px">Publicar nota</button></div>
+      </div>
+      <div id="mats"></div>
+      <p class="mu" id="gstat">Conectando con la biblioteca…</p>
+    </div>
+  </div>
+</section>
+
+<section id="room" class="hide">
+  <div class="top">
+    <div><h1 style="font-size:22px">Sala <span class="code" id="code"></span></h1><span class="mu" id="status"></span></div>
+    <div class="row"><button class="g" id="copy">Copiar enlace</button><button class="g" id="leave">Salir</button></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Llamada de estudio</h2><button id="callbtn">Unirme a la llamada</button></div>
+    <div id="callbox" class="mu"></div>
+  </div>
+
+  <div class="grid">
+    <div id="slot-room"></div>
+    <div>
+      <div class="card">
+        <h2 style="margin:0"># general</h2>
+        <div class="mu" id="members"></div>
+        <div id="chat"></div>
+        <div class="row"><input id="msg" placeholder="Escribe un mensaje…"><button id="send">Enviar</button></div>
+      </div>
+      <div class="card" style="margin-top:16px;text-align:center">
+        <h2>Pomodoro</h2>
+        <div class="timer" id="tm">25:00</div>
+        <div class="row" style="justify-content:center;margin-top:8px"><button id="ts">Iniciar</button><button class="g" id="tr">Reiniciar</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+window.addEventListener('error',e=>{const b=document.getElementById('err');if(b){b.textContent='Error: '+(e.message||'desconocido')+(e.lineno?' (línea '+e.lineno+')':'');b.classList.remove('hide')}});
+const UPLOAD_PASSWORD='Studyhub4752',MAX=8,MAXFILE=150*1024;
+const $=id=>document.getElementById(id);
+const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+const safeUrl=u=>/^https?:\/\//i.test(u)?u:'';
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const genCode=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=new Uint32Array(6);try{crypto.getRandomValues(r)}catch(e){for(let k=0;k<6;k++)r[k]=Math.random()*4294967296}return Array.from(r,n=>a[n%32]).join('')};
+const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
+const IDLE='Pulsa el botón para activar cámara y micrófono. No necesitas ninguna cuenta.';
+
+let peer=null,slot=0,CODE='',myName='',unlocked=false,conns={},mats=[],chat=[],local=null,calls={},tiles={},inCall=false,joining=0;
+const BR=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
+let mq=null,uid=newId(),mqm={},mqT=null,chatOn=false,lobC=null,lobWant=false,pubRoom=false,roomTitle='',annT=null,pcs={},pend={},rooms={};
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]};
+try{myName=localStorage.getItem('ej-name')||''}catch(e){}
+$('name').value=myName;
+
+$('create').onclick=()=>enter(genCode(),{create:1,pub:$('pub').checked,title:$('rtitle').value.trim()});
+$('join').onclick=()=>{const c=$('codeIn').value.trim();if(c)enter(c)};
+$('leave').onclick=()=>{leaveRoom();$('slot-home').appendChild($('matcard'));lobbyStart();location.hash='';$('room').classList.add('hide');$('home').classList.remove('hide')};
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('copy').textContent='¡Copiado!'}catch(e){$('copy').textContent='Copia la URL'}setTimeout(()=>$('copy').textContent='Copiar enlace',1500)};
+
+const status=t=>$('status').textContent=t;
+const bcast=m=>Object.values(conns).forEach(r=>{try{r.c.send(m)}catch(e){}});
+
+async function enter(raw,opts){
+  opts=opts||{};pubRoom=!!opts.pub;roomTitle=opts.title||'';lobbyStop();
+  const code=raw.replace(/[^A-Za-z0-9]/g,'').toUpperCase();if(!code)return;
+  leaveRoom();
+  myName=$('name').value.trim()||myName||'Anónimo';try{localStorage.setItem('ej-name',myName)}catch(e){}
+  CODE=code;location.hash=code;
+  $('home').classList.add('hide');$('room').classList.remove('hide');$('code').textContent=code;$('slot-room').appendChild($('matcard'));
+  $('callbox').className='mu';$('callbox').textContent=IDLE;
+  renderChat();renderMats();renderMembers();status('Conectando…');
+  const my=++joining;mqStart(code,my);
+  setTimeout(()=>{
+    if(my!==joining)return;
+    const alone=!Object.keys(conns).length&&!Object.values(mqm).some(r=>Date.now()-r.at<50000);
+    if(!alone)return;
+    status(!chatOn?'Sin conexión al servidor del chat. Revisa tu internet o prueba de nuevo.':opts.create?'Sala creada. Comparte el código '+code+' o el enlace para que se unan.':'Todavía no hay nadie en la sala '+code+'. Revisa que el código sea exactamente igual al de tu amigo.');
+  },7000);
+  if(typeof Peer==='undefined'){status('Las llamadas no están disponibles (no cargó PeerJS).');return}
+  for(let i=1;i<=MAX;i++){
+    let r;try{r=await claim(i)}catch(e){r=null}
+    if(my!==joining){if(r===true&&peer)peer.destroy();return}
+    if(r===true){slot=i;start();return}
+    if(r===null){status('Llamadas y archivos: no se pudo conectar al servidor. El chat sigue funcionando.');return}
+  }
+  status('La sala está llena (máximo '+MAX+' personas).');
+}
+function claim(i){return new Promise(res=>{
+  let opened=false;const p=new Peer('ej-'+CODE+'-'+i);
+  const t=setTimeout(()=>{if(!opened){p.destroy();res(null)}},12000);
+  p.on('open',()=>{opened=true;clearTimeout(t);peer=p;res(true)});
+  p.on('error',e=>{if(opened)return;clearTimeout(t);p.destroy();res(e.type==='unavailable-id'?false:null)});
+})}
+function start(){
+  peer.on('connection',c=>link(c,true));
+  peer.on('error',()=>{});
+  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
+  for(let j=1;j<=MAX;j++)if(j!==slot)link(peer.connect('ej-'+CODE+'-'+j,{reliable:true}),false);
+  status('Conectado como '+myName);
+}
+function link(c,inc){
+  c.on('open',()=>{conns[c.peer]={c,name:'Invitado',inCall:false};c.send({t:'hello',name:myName,inCall});renderMembers()});
+  c.on('data',d=>onData(c,d,inc));
+  c.on('close',()=>gone(c));c.on('error',()=>{});
+}
+function gone(c){
+  const r=conns[c.peer];if(!r||r.c!==c)return;
+  delete conns[c.peer];renderMembers();
+}
+function onData(c,d,inc){
+  const r=conns[c.peer];if(!r||!d)return;
+  if(d.t==='hello'){r.name=d.name;r.inCall=!!d.inCall;renderMembers();
+    if(inc)c.send({t:'sync',mats:mats.map(({_u,...x})=>x),chat})}
+  else if(d.t==='chat')addChat(d.m);
+  else if(d.t==='mat')addMat(d.m);
+  else if(d.t==='del'){mats=mats.filter(x=>x.id!==d.id);renderMats()}
+  else if(d.t==='sync'){(d.mats||[]).forEach(addMat);(d.chat||[]).forEach(addChat)}
+}
+function leaveRoom(){
+  joining++;leaveCall();
+  if(peer){try{peer.destroy()}catch(e){}peer=null}
+  clearInterval(mqT);clearInterval(annT);if(mq){mqPub({k:'bye'});try{mq.end()}catch(e){}mq=null}chatOn=false;mqm={};
+  conns={};chat=[];
+}
+window.addEventListener('beforeunload',()=>{if(peer)peer.destroy()});
+
+/* ---- miembros y chat (estilo Discord) ---- */
+function renderMembers(){
+  const now=Date.now(),set=new Set();
+  Object.values(conns).forEach(r=>set.add(r.name));
+  Object.values(mqm).forEach(r=>{if(now-r.at<50000)set.add(r.name)});
+  set.delete(myName);
+  const names=['Tú ('+myName+')',...set];
+  $('members').textContent=(chatOn?'🟢 Chat conectado':'🟠 Conectando chat…')+' · En línea ('+names.length+'): '+names.join(', ');
+}
+setInterval(renderMembers,15000);
+const mqPub=m=>{if(mq&&mq.connected)mq.publish('estudiojuntos/'+CODE+'/m',JSON.stringify({...m,uid,from:myName,ic:inCall}))};
+function mqStart(code,my){
+  if(typeof mqtt==='undefined'){renderMembers();return}
+  let i=0;
+  const go=()=>{
+    if(my!==joining)return;
+    let c;try{c=mqtt.connect(BR[i++%BR.length],{connectTimeout:7000,reconnectPeriod:0,clientId:'ej'+uid+i,will:{topic:'estudiojuntos/'+code+'/m',payload:JSON.stringify({k:'bye',uid})}})}catch(err){status('Error del chat: '+(err.message||err));return}
+    let ok=false,dead=false;
+    c.on('connect',()=>{
+      if(my!==joining){c.end(true);return}
+      ok=true;mq=c;chatOn=true;c.subscribe('estudiojuntos/'+code+'/m');mqPub({k:'hello'});
+      clearInterval(mqT);mqT=setInterval(()=>mqPub({k:'ping'}),20000);renderMembers();
+      clearInterval(annT);if(pubRoom){announce();annT=setInterval(announce,20000)}
+    });
+    c.on('message',(t,pl)=>{try{mqIn(JSON.parse(pl.toString()))}catch(e){}});
+    c.on('error',()=>{});
+    c.on('close',()=>{if(dead)return;dead=true;if(my!==joining)return;chatOn=false;if(mq===c)mq=null;renderMembers();try{c.end(true)}catch(e){}setTimeout(go,ok?1500:400)});
+  };
+  go();
+}
+function mqIn(d){
+  if(!d||d.uid===uid)return;
+  if(d.k==='bye'){delete mqm[d.uid];dropPeer(d.uid);renderMembers();return}
+  mqm[d.uid]={name:d.from||'Invitado',at:Date.now(),ic:!!d.ic};
+  if(inCall){if(d.ic&&!pcs[d.uid]&&uid>d.uid)callPeer(d.uid,d.from);if(!d.ic&&pcs[d.uid])dropPeer(d.uid)}
+  if(d.k==='sig'){if(d.to===uid)onSig(d);return}
+  if(d.k==='chat')addChat(d.m);
+  else if(d.k==='mat')addMat(d.m);
+  else if(d.k==='del'){mats=mats.filter(x=>x.id!==d.id);renderMats()}
+  else if(d.k==='sync'){(d.chat||[]).forEach(addChat);(d.mats||[]).forEach(addMat)}
+  else if(d.k==='hello')setTimeout(()=>mqPub({k:'sync',chat:chat.slice(-50),mats:mats.filter(x=>x.kind!=='file').map(({_u,...x})=>x)}),Math.random()*1500);
+  renderMembers();
+}
+/* ---- salas activas ---- */
+function announce(){
+  if(!mq||!mq.connected)return;
+  const set=new Set();Object.values(conns).forEach(r=>set.add(r.name));
+  Object.values(mqm).forEach(r=>{if(Date.now()-r.at<50000)set.add(r.name)});set.delete(myName);
+  mq.publish('estudiojuntos/lobby',JSON.stringify({code:CODE,title:roomTitle,n:set.size+1}));
+}
+function lobbyStart(){
+  if(typeof mqtt==='undefined'||lobWant)return;lobWant=true;let i=0;
+  const go=()=>{
+    if(!lobWant)return;
+    let c;try{c=mqtt.connect(BR[i++%BR.length],{connectTimeout:7000,reconnectPeriod:0,clientId:'ejl'+newId()})}catch(err){return}lobC=c;let dead=false;
+    c.on('connect',()=>c.subscribe('estudiojuntos/lobby'));
+    c.on('message',(t,pl)=>{try{const d=JSON.parse(pl.toString());rooms[d.code]={title:d.title,n:d.n,at:Date.now()};renderRooms()}catch(e){}});
+    c.on('error',()=>{});
+    c.on('close',()=>{if(dead)return;dead=true;if(lobWant)setTimeout(go,800)});
+  };
+  go();
+}
+function lobbyStop(){lobWant=false;if(lobC){try{lobC.end(true)}catch(e){}lobC=null}rooms={}}
+function renderRooms(){
+  const box=$('rooms'),now=Date.now(),list=Object.entries(rooms).filter(([k,r])=>now-r.at<50000);
+  if(!list.length){box.className='mu';box.textContent='No hay salas públicas activas ahora. ¡Crea la primera!';return}
+  box.className='';box.innerHTML='';
+  list.forEach(([code,r])=>{
+    const el=document.createElement('div');el.className='item';
+    el.innerHTML='<div><b>'+esc(r.title||'Sala '+code)+'</b><div class="mu">'+esc(code)+' · '+r.n+' en línea</div></div><button class="g">Entrar</button>';
+    el.querySelector('button').onclick=()=>enter(code,{pub:true,title:r.title});
+    box.appendChild(el);
+  });
+}
+setInterval(renderRooms,10000);
+function addChat(m){
+  if(chat.some(x=>x.id===m.id))return;
+  chat.push(m);chat.sort((a,b)=>a.at-b.at);renderChat();
+}
+function renderChat(){
+  const c=$('chat');c.innerHTML='';let prev=null;
+  chat.slice(-100).forEach(m=>{
+    const cont=prev&&prev.name===m.name&&m.at-prev.at<300000;prev=m;
+    const h=hue(m.name),el=document.createElement('div');el.className='m '+(cont?'cont':'first');
+    const time=new Date(m.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML='<div class="av" style="background:hsl('+h+',55%,45%)">'+esc((m.name[0]||'?').toUpperCase())+'</div><div class="mb">'+
+      (cont?'':'<span class="mn" style="color:hsl('+h+',60%,60%)">'+esc(m.name)+'</span><span class="mt">'+time+'</span><br>')+esc(m.text)+'</div>';
+    c.appendChild(el);
+  });
+  c.scrollTop=c.scrollHeight;
+}
+function send(){
+  const t=$('msg').value.trim();if(!t)return;$('msg').value='';
+  const m={id:newId(),name:myName,text:t,at:Date.now()};addChat(m);bcast({t:'chat',m});mqPub({k:'chat',m});
+}
+$('send').onclick=send;$('msg').onkeydown=e=>{if(e.key==='Enter')send()};
+
+/* ---- contraseña y material ---- */
+const tryUnlock=()=>{
+  if($('pw').value===UPLOAD_PASSWORD){unlocked=true;$('lock').classList.add('hide');$('pwmsg').textContent='';$('tools').classList.remove('hide')}
+  else $('pwmsg').textContent='Contraseña incorrecta.';
+};
+$('unlock').onclick=tryUnlock;$('pw').onkeydown=e=>{if(e.key==='Enter')tryUnlock()};
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>['file','link','note'].forEach(t=>$('p-'+t).classList.toggle('hide',t!==b.dataset.t)));
+
+function addMat(m){
+  if(!m||!m.id||mats.some(x=>x.id===m.id))return;
+  mats.push(m);mats.sort((a,b)=>b.at-a.at);renderMats();
+}
+const GT='estudiojuntos/global/mat/';
+let gC=null,gOn=false;
+function publish(o){
+  if(!unlocked)return false;
+  if(!gC||!gC.connected){$('gstat').textContent='Sin conexión con la biblioteca todavía. Intenta en unos segundos.';return false}
+  const m={id:newId(),by:myName,at:Date.now(),...o};
+  gC.publish(GT+m.id,JSON.stringify(m),{retain:true,qos:1});addMat(m);return true;
+}
+function gStart(){
+  if(typeof mqtt==='undefined'){$('gstat').textContent='No cargó la librería de conexión. Recarga la página.';return}
+  let i=0;
+  const go=()=>{
+    let c;try{c=mqtt.connect(BR[i++%BR.length],{connectTimeout:7000,reconnectPeriod:0,clientId:'ejg'+newId()})}catch(e){return}
+    gC=c;let dead=false;
+    c.on('connect',()=>{c.subscribe(GT+'+',{qos:1});gOn=true;$('gstat').textContent='🟢 Biblioteca global conectada: lo que subas lo ven todas las salas.'});
+    c.on('message',(t,pl)=>{
+      const id=t.split('/').pop();
+      try{const x=pl.toString();if(!x){mats=mats.filter(m=>m.id!==id);renderMats();return}addMat(JSON.parse(x))}catch(e){}
+    });
+    c.on('error',()=>{});
+    c.on('close',()=>{if(dead)return;dead=true;gOn=false;$('gstat').textContent='🟠 Reconectando con la biblioteca…';setTimeout(go,1000)});
+  };
+  go();
+}
+function renderMats(){
+  const box=$('mats');
+  if(!mats.length){box.innerHTML='<p class="mu">Aún no hay material. ¡Sube el primero!</p>';return}
+  box.innerHTML='';
+  mats.forEach(m=>{
+    const el=document.createElement('div');el.className='item';
+    const icon={file:'📄',link:'🔗',note:'📝'}[m.kind]||'📄';
+    let u='';
+    if(m.kind==='link')u=safeUrl(m.href||'');
+    if(m.kind==='file'&&m.b64)u=m._u||(m._u=URL.createObjectURL(new Blob([Uint8Array.from(atob(m.b64),c=>c.charCodeAt(0))],{type:m.mime||'application/octet-stream'})));
+    const t=esc(m.title||'Sin título');
+    const title=u?'<a href="'+esc(u)+'" target="_blank" rel="noopener"'+(m.kind==='file'?' download="'+t+'"':'')+'>'+icon+' '+t+'</a>':'<b>'+icon+' '+t+'</b>';
+    const body=m.kind==='note'?'<div class="note">'+esc(m.body||'')+'</div>':'';
+    el.innerHTML='<div>'+title+'<div class="mu">'+esc(m.by||'')+'</div>'+body+'</div><button class="x" title="Borrar">✕</button>';
+    el.querySelector('button').onclick=()=>{
+      if(!unlocked){alert('Escribe la contraseña arriba para borrar material.');return}
+      if(confirm('¿Borrar este material para todos?')){mats=mats.filter(x=>x.id!==m.id);renderMats();if(gC&&gC.connected)gC.publish(GT+m.id,'',{retain:true,qos:1})}
+    };
+    box.appendChild(el);
+  });
+}
+$('ladd').onclick=()=>{const u=safeUrl($('lurl').value.trim());if(!u){alert('Escribe un enlace que empiece con https://');return}
+  publish({kind:'link',title:$('ltitle').value.trim()||u,href:u});$('ltitle').value=$('lurl').value=''};
+$('nadd').onclick=()=>{const b=$('nbody').value.trim();if(!b)return;
+  publish({kind:'note',title:$('ntitle').value.trim()||'Nota',body:b});$('ntitle').value=$('nbody').value=''};
+$('file').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f||!unlocked)return;
+  if(f.size>MAXFILE){$('fstat').textContent='Ese archivo pesa más de 150 KB. Súbelo a Drive u otro sitio y pega el enlace en la pestaña Enlace.';return}
+  const du=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+  const okp=publish({kind:'file',title:f.name,mime:f.type,b64:String(du).split(',')[1]});
+  $('fstat').textContent=okp?'¡Listo! Ya está en la biblioteca global.':'No hay conexión con la biblioteca todavía. Intenta en unos segundos.';
+};
+
+/* ---- llamada ---- */
+const gum=c=>navigator.mediaDevices.getUserMedia(c);
+function showTile(id,stream,label){
+  let t=tiles[id];
+  if(!t){t=tiles[id]=document.createElement('div');t.className='tile';t.innerHTML='<video autoplay playsinline></video><span></span>';const g=$('vgrid');if(g)g.appendChild(t)}
+  t.querySelector('span').textContent=label||(conns[id]&&conns[id].name)||'Invitado';
+  const v=t.querySelector('video');if(v.srcObject!==stream)v.srcObject=stream;
+}
+function dropTile(id){if(tiles[id]){tiles[id].remove();delete tiles[id]}}
+const sig=(to,type,data)=>mqPub({k:'sig',to,type,data});
+function mkpc(id,name){
+  const pc=new RTCPeerConnection(ICE);pcs[id]=pc;
+  local.getTracks().forEach(t=>pc.addTrack(t,local));
+  pc.onicecandidate=e=>{if(e.candidate)sig(id,'ice',e.candidate)};
+  pc.ontrack=e=>showTile(id,e.streams[0],name);
+  pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)&&pcs[id]===pc)dropPeer(id)};
+  return pc;
+}
+function dropPeer(id){if(pcs[id]){pcs[id].close();delete pcs[id]}dropTile(id)}
+const flush=(id,pc)=>{(pend[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));pend[id]=[]};
+async function callPeer(id,name){
+  const pc=mkpc(id,name);
+  await pc.setLocalDescription(await pc.createOffer());
+  sig(id,'offer',pc.localDescription);
+}
+async function onSig(d){
+  const id=d.uid;if(!inCall)return;
+  try{
+    if(d.type==='offer'){
+      if(pcs[id]){pcs[id].close();delete pcs[id]}
+      const pc=mkpc(id,d.from);await pc.setRemoteDescription(d.data);flush(id,pc);
+      await pc.setLocalDescription(await pc.createAnswer());sig(id,'answer',pc.localDescription);
+    }else if(d.type==='answer'){
+      const pc=pcs[id];if(pc){await pc.setRemoteDescription(d.data);flush(id,pc)}
+    }else if(d.type==='ice'){
+      const pc=pcs[id];
+      if(pc&&pc.remoteDescription)await pc.addIceCandidate(d.data);else(pend[id]=pend[id]||[]).push(d.data);
+    }
+  }catch(e){}
+}
+function leaveCall(){
+  if(!inCall)return;inCall=false;
+  Object.keys(pcs).forEach(k=>dropPeer(k));Object.keys(tiles).forEach(dropTile);pend={};
+  if(local){local.getTracks().forEach(t=>t.stop());local=null}
+  mqPub({k:'ping'});
+  $('callbtn').textContent='Unirme a la llamada';$('callbox').className='mu';$('callbox').textContent=IDLE;
+}
+$('callbtn').onclick=async()=>{
+  const cb=$('callbox');
+  if(inCall){leaveCall();return}
+  if(!mq||!mq.connected){cb.className='mu';cb.textContent='Esperando la conexión de la sala… intenta de nuevo en unos segundos.';return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){cb.className='mu';cb.textContent='Tu navegador no permite cámara en esta página. Ábrela en una pestaña nueva con https://.';return}
+  cb.className='mu';cb.textContent='Pidiendo permiso de cámara y micrófono…';
+  try{local=await gum({video:true,audio:true})}
+  catch(e){try{local=await gum({audio:true})}catch(e2){cb.textContent='No se pudo usar cámara/micrófono ('+(e2.name||'error')+'). Permite el acceso en el navegador. Si ves esta página dentro de otra, ábrela en una pestaña nueva con https://.';return}}
+  inCall=true;$('callbtn').textContent='Salir de la llamada';cb.className='';
+  cb.innerHTML='<div id="vgrid"></div><div class="row" style="justify-content:center;margin-top:10px"><button class="g" id="mic">Silenciar micrófono</button><button class="g" id="cam">Apagar cámara</button></div>';
+  showTile('me',local,'Tú');tiles.me.classList.add('me');tiles.me.querySelector('video').muted=true;
+  const tg=(kind,id,on,off)=>{$(id).onclick=()=>{const ts=local.getTracks().filter(x=>x.kind===kind);if(!ts.length)return;const e=!ts[0].enabled;ts.forEach(x=>x.enabled=e);$(id).textContent=e?on:off}};
+  tg('audio','mic','Silenciar micrófono','Activar micrófono');tg('video','cam','Apagar cámara','Encender cámara');
+  mqPub({k:'ping'});
+  Object.entries(mqm).forEach(([id,r])=>{if(r.ic&&uid>id&&!pcs[id]&&Date.now()-r.at<50000)callPeer(id,r.name)});
+};
+
+/* ---- pomodoro ---- */
+let left=1500,iv=null;
+const draw=()=>$('tm').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+$('ts').onclick=()=>{
+  if(iv){clearInterval(iv);iv=null;$('ts').textContent='Reanudar';return}
+  $('ts').textContent='Pausar';
+  iv=setInterval(()=>{left--;draw();if(left<=0){clearInterval(iv);iv=null;$('ts').textContent='Iniciar';left=1500;alert('¡Pomodoro terminado! Descansa 5 minutos.')}},1000);
+};
+$('tr').onclick=()=>{clearInterval(iv);iv=null;left=1500;draw();$('ts').textContent='Iniciar'};
+try{
+  if(location.hash.length>1){const h=decodeURIComponent(location.hash.slice(1)).replace(/[^A-Za-z0-9]/g,'').toUpperCase();$('codeIn').value=h;try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+  lobbyStart();
+}catch(e){console.error(e)}
+try{gStart()}catch(e){console.error(e)}
+</script>
+</body>
+</html>
