@@ -103,7 +103,8 @@ button.x{background:none;color:var(--mu);padding:2px 8px;font-weight:400}
         <h2 style="margin:0"># general</h2>
         <div class="mu" id="members"></div>
         <div id="chat"></div>
-        <div class="row"><input id="msg" placeholder="Escribe un mensaje…"><button id="send">Enviar</button></div>
+        <div class="row"><button class="g" id="attach" title="Adjuntar archivo (solo esta sala)">📎</button><input id="msg" placeholder="Escribe un mensaje…"><button id="send">Enviar</button></div>
+        <input type="file" id="cfile" class="hide"><p class="mu" id="cstat" style="margin:6px 0 0">Los archivos del chat solo los ve esta sala (hasta 150 KB).</p>
       </div>
       <div class="card" style="margin-top:16px;text-align:center">
         <h2>Pomodoro</h2>
@@ -193,7 +194,7 @@ function gone(c){
 function onData(c,d,inc){
   const r=conns[c.peer];if(!r||!d)return;
   if(d.t==='hello'){r.name=d.name;r.inCall=!!d.inCall;renderMembers();
-    if(inc)c.send({t:'sync',mats:mats.map(({_u,...x})=>x),chat})}
+    if(inc)c.send({t:'sync',mats:mats.map(({_u,...x})=>x),chat:chat.map(({_u,...x})=>x)})}
   else if(d.t==='chat')addChat(d.m);
   else if(d.t==='mat')addMat(d.m);
   else if(d.t==='del'){mats=mats.filter(x=>x.id!==d.id);renderMats()}
@@ -247,7 +248,7 @@ function mqIn(d){
   else if(d.k==='mat')addMat(d.m);
   else if(d.k==='del'){mats=mats.filter(x=>x.id!==d.id);renderMats()}
   else if(d.k==='sync'){(d.chat||[]).forEach(addChat);(d.mats||[]).forEach(addMat)}
-  else if(d.k==='hello')setTimeout(()=>mqPub({k:'sync',chat:chat.slice(-50),mats:mats.filter(x=>x.kind!=='file').map(({_u,...x})=>x)}),Math.random()*1500);
+  else if(d.k==='hello')setTimeout(()=>mqPub({k:'sync',chat:chat.slice(-50).map(({_u,b64,...x})=>x),mats:mats.filter(x=>x.kind!=='file').map(({_u,...x})=>x)}),Math.random()*1500);
   renderMembers();
 }
 /* ---- salas activas ---- */
@@ -283,7 +284,8 @@ function renderRooms(){
 }
 setInterval(renderRooms,10000);
 function addChat(m){
-  if(chat.some(x=>x.id===m.id))return;
+  const k=chat.findIndex(x=>x.id===m.id);
+  if(k>=0){if(!chat[k].b64&&m.b64){chat[k]=m;renderChat()}return}
   chat.push(m);chat.sort((a,b)=>a.at-b.at);renderChat();
 }
 function renderChat(){
@@ -293,11 +295,46 @@ function renderChat(){
     const h=hue(m.name),el=document.createElement('div');el.className='m '+(cont?'cont':'first');
     const time=new Date(m.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     el.innerHTML='<div class="av" style="background:hsl('+h+',55%,45%)">'+esc((m.name[0]||'?').toUpperCase())+'</div><div class="mb">'+
-      (cont?'':'<span class="mn" style="color:hsl('+h+',60%,60%)">'+esc(m.name)+'</span><span class="mt">'+time+'</span><br>')+esc(m.text)+'</div>';
+      (cont?'':'<span class="mn" style="color:hsl('+h+',60%,60%)">'+esc(m.name)+'</span><span class="mt">'+time+'</span><br>')+esc(m.text||'')+fileHtml(m)+'</div>';
     c.appendChild(el);
   });
   c.scrollTop=c.scrollHeight;
 }
+const SAFEIMG=/^image\/(png|jpe?g|gif|webp)$/;
+function fileHtml(m){
+  if(!m.file)return '';
+  const n=esc(String(m.file.name||'archivo')).replace(/"/g,'&quot;');
+  if(!m.b64)return '<div class="mu">📎 '+n+' (se envió antes de que entraras; ya no está disponible)</div>';
+  const safe=SAFEIMG.test(m.file.mime||'');
+  const u=m._u||(m._u=URL.createObjectURL(new Blob([Uint8Array.from(atob(m.b64),c=>c.charCodeAt(0))],{type:safe?m.file.mime:'application/octet-stream'})));
+  const kb=Math.max(1,Math.round((m.file.size||0)/1024));
+  return safe?'<a href="'+u+'" target="_blank" rel="noopener"><img src="'+u+'" alt="'+n+'" style="max-width:100%;max-height:220px;border-radius:8px;display:block;margin-top:4px"></a>'
+    :'<a href="'+u+'" download="'+n+'" style="color:var(--ac);font-weight:600">📎 '+n+'</a> <span class="mt">'+kb+' KB</span>';
+}
+async function shrink(f){
+  if(!/^image\/(png|jpe?g|webp)$/.test(f.type)||f.size<=MAXFILE)return f;
+  const bmp=await createImageBitmap(f);let sc=Math.min(1,1280/Math.max(bmp.width,bmp.height));
+  for(let q=.8;q>.3;q-=.15){
+    const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
+    cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);
+    const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',q));
+    if(b&&b.size<=MAXFILE)return new File([b],f.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'});
+    sc*=.8;
+  }
+  return f;
+}
+$('attach').onclick=()=>$('cfile').click();
+$('cfile').onchange=async e=>{
+  let f=e.target.files[0];e.target.value='';if(!f)return;
+  const st=$('cstat');
+  if(!CODE||(!(mq&&mq.connected)&&!Object.keys(conns).length)){st.textContent='Aún no hay conexión con la sala. Espera unos segundos.';return}
+  try{f=await shrink(f)}catch(err){}
+  if(f.size>MAXFILE){st.textContent='Ese archivo pesa más de 150 KB. Para algo más grande comparte un enlace (Drive, etc.).';return}
+  const du=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+  const m={id:newId(),name:myName,text:'',at:Date.now(),file:{name:f.name,mime:f.type,size:f.size},b64:String(du).split(',')[1]};
+  mqPub({k:'chat',m});bcast({t:'chat',m});addChat(m);
+  st.textContent='Archivo enviado a esta sala.';
+};
 function send(){
   const t=$('msg').value.trim();if(!t)return;$('msg').value='';
   const m={id:newId(),name:myName,text:t,at:Date.now()};addChat(m);bcast({t:'chat',m});mqPub({k:'chat',m});
